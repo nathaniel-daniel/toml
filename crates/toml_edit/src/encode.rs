@@ -346,17 +346,21 @@ pub(crate) fn to_string_repr(
         output.push_str(style.literal_end());
     } else {
         output.push_str(style.standard_start());
-        for ch in value.chars() {
+        let mut char_iter = value.chars().peekable();
+        while let Some(ch) = char_iter.next() {
             match ch {
                 '\u{8}' => output.push_str("\\b"),
-                '\u{9}' => output.push_str("\\t"),
+                '\u{9}' => output.push('\t'),
                 '\u{a}' => match style {
                     StringStyle::NewlineTriple => output.push('\n'),
                     StringStyle::OnelineSingle => output.push_str("\\n"),
                     StringStyle::OnelineTriple => unreachable!(),
                 },
                 '\u{c}' => output.push_str("\\f"),
-                '\u{d}' => output.push_str("\\r"),
+                '\u{d}' => match (style, char_iter.peek()) {
+                    (StringStyle::NewlineTriple, Some('\n')) => output.push('\r'),
+                    _ => output.push_str("\\r"),
+                },
                 '\u{22}' => output.push_str("\\\""),
                 '\u{5c}' => output.push_str("\\\\"),
                 c if c <= '\u{1f}' || c == '\u{7f}' => {
